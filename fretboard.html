@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="Guitar Chord and Scale Learning Software" content="guitar,chord,scale,color,harmony,theory,visualization,svg,html5,css3,drew nuttall"/>
+    <script type="text/javascript" language="javascript" src="fretboard.js"></script>
+    <title>Fretboard Visualization</title>
+    <style>
+        body
+        {
+            font-family: Verdana, Arial, Helvetica, sans-serif;
+            /*font-size: 10px;
+            font-weight: bold;*/
+            background-color: black;
+            color: white;
+        }
+        div {
+            border-radius: 5px;
+            padding: 5px;
+        }
+        #d1 span {
+            text-align: center;
+            display: inline-block;
+            vertical-align: top;
+            padding-left: 5px;
+        }
+        #d1
+        {
+            color: white;
+            vertical-align: top;
+            background: #666;
+            width: 700px;
+            position: relative;
+        }
+        /* unvisited link */
+        a:link {
+            color: #FF0000;
+        }
+
+        /* visited link */
+        a:visited {
+            color: #00FF00;
+        }
+
+        /* mouse over link */
+        a:hover {
+            color: #FF00FF;
+        }
+
+        /* selected link */
+        a:active {
+            color: #0000FF;
+        }
+        .hint {
+            font-weight: normal;
+            font-style: italic;
+        }
+        .group {
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            padding: 5px;
+        }
+     
+    </style>
+</head>
+<body onload="start();">
+
+    <!--#region View -->
+    <div id="d0" align="center" style="vertical-align: bottom">
+        <svg id="fretboard" xMinYMax meet width="100%" height="10%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+            <defs>
+                <pattern id="wood" patternUnits="userSpaceOnUse" x="0" y="0" width="185" height="170">
+                    <image id="woodImage" width="185" height="170" xlink:href="http://drewnuttall.com/ebony.jpg"></image>
+                </pattern>
+                <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                    <stop offset="0%" style="stop-color: lightsalmon; stop-opacity: 1"/>
+                    <stop offset="100%" style="stop-color: white; stop-opacity: 1"/>
+                </radialGradient>
+            </defs>
+            <style >
+                /* <![CDATA[ */
+                #userLayer {
+                    cursor: pointer;
+                }
+                /* ]]> */
+            </style>
+            <g id="baseLayer"></g>
+            <g id="notesLayer"></g>
+            <g id="userLayer"></g>
+        </svg>
+    </div>
+    <div id="d1" align="center" style="color: white; vertical-align: top; background: #666; width: 60%; text-align: center; margin-left: 15%;">
+        <p style="font-weight: normal; font-style: italic;">Choose a Chord or Scale to display.  Notes are color-coded according to their relationship to the Root.  Click 'Analyze' to find what Scales to use over a given Chord.  Use the 'View' and 'Pan' controls to show only the part of the Fretboard you want to concentrate on.</p>
+        <div id="descArea">
+            Choose a Scale or Chord
+        </div>
+        <div style="display:none;">
+            <!--this section is used for experimenting with different views-->
+            <input id="viewArea"><button onlick="$$('fretboard').setAttribute('viewBox', viewArea.value);">Set</button><br />
+            vb min-x (pan):
+            <output for="r1" id="r1o"></output>
+            vb min-y:
+            <input id="r2" type="range" value="0" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
+            <output for="r3" id="r2o"></output>
+            vb width:
+            <input id="r3" type="range" value="1080" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
+            <output for="r3" id="r3o"></output>
+            vb height:
+            <input id="r4" type="range" value="190" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
+            <output for="r4" id="r4o"></output>
+            height:
+            <input id="r5" type="range" value="170" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
+            <output for="r5" id="r5o"></output>
+            width
+            <input id="r6" type="range" value="1080" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
+            <output for="r6" id="r6o"></output>
+        </div>
+        <span>
+            <select id="types" size="2" onchange="buildTonalities();" title="Click to Select either a Chord or a Scale to Display" style="vertical-align: top;"><option value="chord" selected>Chord</option><option value="scale">Scale</option></select>
+            <select id="roots" size="12" onchange="" title="Click to Select the Root of the Chord or Scale"><option selected value="C">C<option value="C#">C#<option value="D">D<option value="D#">D#<option value="E">E<option value="F">F<option value="F#">F#<option value="G">G<option value="G#">G#<option value="A">A<option value="A#">A#<option value="B">B</select>
+        </span>
+        <span id="tonalArea" style="text-align: center; display: inline; vertical-align: top;"></span>
+        <span>
+            <button onclick="find();" accesskey="d" title="Click to Display the Notes of the currently selected Chord or Scale on the Fretboard"><u>D</u>isplay</button><br /><br />
+            <!--<button onclick="superimpose();" accesskey="s" title="Click to Superimpose another scale/mode or chord over the current one."><u>S</u>uperimpose</button><br /><br />-->
+            <button onclick="clearNotes();" accesskey="c" title="Click to remove the Notes from the Fretboard"><u>C</u>lear</button><br /><br />
+            <button onclick="analyzeChord()" accesskey="a" title="Click to find Scales which work over the currently selected Tonality"><u>A</u>nalyze</button><br /><br />
+            <span id="analyzeResult" class="group" style="display: none;"></span>
+        </span>
+        <span id="degreesArea" class="group"></span>
+        <span>
+            <label for="views"><u>V</u>iew:</label><br />
+            <select id="views" accesskey="v" onchange="autoAdjust()">
+                <option value="n">Normal</option>
+                <option value="z1" >Zoom</option>
+                <option value="z2">Tight Zoom</option>
+            </select>
+            <br /><br />
+            <label for="r1"><a href="#" style="text-decoration: none;" onclick="panLeft();"><<</a> &nbsp;&nbsp;&nbsp;&nbsp;<u>P</u>an:&nbsp;&nbsp;&nbsp; <a href="#" style="text-decoration: none;" onclick="panRight();">>></a></label>
+            <br />
+            <input id="r1" accesskey="p" type="range" step="2" value="0" style="" min="" max="820" onchange="adjust();" />
+            <br /><br />
+            <label for="tunings"><u>T</u>uning</label><br />
+            <select id="tunings" onchange="changeTuning();">
+                <option value="standard" title="E A D G B E">Standard</option>
+                <option value="dropD" title="D A D G B E">Drop D</option>
+                <option value="openG" title="D G D G B D">Open G</option>
+                <option value="openE" title="E B E G♯ B E">Open E</option>
+                <option value="dadgad" title="D A D G A D">DADGAD</option>
+            </select>
+            <br /><br />
+            <label for="instruments"><u>I</u>nstrument</label>
+            <br />
+            <select id="instruments" accesskey="i" onchange="changeInstrument();">
+                <option value="guitar">Guitar</option>
+                <option value="mandolin">Mandolin</option>
+                <option value="uke">Ukelele</option>
+                <!--<option value="banjo">Banjo</option>-->
+            </select>
+            <br /><br />
+            <label for="viewstyles"><u>B</u>ackground:</label><br />
+            <select id="viewstyles" onchange="changeViewStyle();" accesskey="b">
+                <option value="rosewood">Rosewood</option>
+                <option value="ebony" selected>Ebony</option>
+                <option value="simple">None</option>
+            </select>
+        </span>
+    </div>
+    <!-- endregion -->
+    
+</body>
+</html>

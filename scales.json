@@ -1,0 +1,33 @@
+{ name: 'ionian', 'fx': 'I', 'desc': 'I Ionian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 11] }, //	major
+    { name: 'dorian', 'fx': 'ii', 'desc': 'ii Dorian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
+    { name: 'phrygian', 'fx': 'iii', 'desc': 'iii Phrygian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
+    { name: 'lydian', 'fx': 'IV', 'desc': 'IV Lydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
+    { name: 'mixolydian', 'fx': 'V', 'desc': 'V Mixolydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
+    { name: 'aeolian', 'fx': 'vi', 'desc': 'vi Aeolian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 8, 10] },
+    { name: 'locrian', 'fx': 'vii-', 'desc': 'vii&deg; Locrian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
+    { name: 'aeolian', 'fx': 'i', 'desc': 'i Aeolian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 10] }, //	minor
+    { name: 'locrian', 'fx': 'ii', 'desc': 'ii&deg; Locrian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
+    { name: 'ionian', 'fx': 'III', 'desc': 'III Ionian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 11] },
+    { name: 'dorian', 'fx': 'iv', 'desc': 'iv Dorian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
+    { name: 'phrygian', 'fx': 'v', 'desc': 'v Phrygian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
+    { name: 'lydian', 'fx': 'VI', 'desc': 'VI Lydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
+    { name: 'mixolydian', 'fx': 'VII', 'desc': 'VII Mixolydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
+    { name: 'Melodic Minor', 'fx': 'i', 'desc': 'i Melodic Minor', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 11] }, //	melodic minor
+    { name: 'Dorian b2', 'fx': 'ii', 'desc': 'ii Dorian b2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 5, 7, 9, 10] },
+    { name: 'Lydian #5', 'fx': 'III', 'desc': 'III Lydian #5', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 8, 9, 11] },
+    { name: 'Lydian Dominant', 'fx': 'IV', 'desc': 'IV Lydian Dominant', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 10] },
+    { name: 'Mixolydian b6', 'fx': 'V', 'desc': 'V Mixolydian b6', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 5, 7, 8, 10] },
+    { name: 'locrian #2', 'fx': 'vi-', 'desc': 'vi&deg; Locrian #2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 6, 8, 10] },
+    { name: 'altered', 'fx': 'vii', 'desc': 'vii&deg; Altered', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 4, 6, 8, 10] },
+    { name: 'Harmonic Minor', 'fx': 'i', 'desc': 'i Aeolian #7', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 11] }, //	harmonic minor
+    { name: 'locrian 6', 'fx': 'ii-', 'desc': 'ii&deg; Locrian #6', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 3, 5, 6, 9, 10] },
+    { name: 'ionian #5', 'fx': 'III', 'desc': 'III Ionian #5', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 4, 5, 8, 9, 11] },
+    { name: 'dorian #4', 'fx': 'iv', 'desc': 'iv Dorian #4', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 6, 7, 9, 10] },
+    { name: 'phrygian major', 'fx': 'V', 'desc': 'V Phrygian Major', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 4, 5, 7, 8, 10] },
+    { name: 'lydian #2', 'fx': 'VI', 'desc': 'VI Lydian #2', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 3, 4, 6, 7, 9, 11] },
+    { name: 'mixolydian #1', 'fx': 'vii-', 'desc': 'vii&deg; Mixolydian #1', 'modeOf': 'Harmonic Minor', 'aSteps': [1, 2, 4, 5, 7, 9, 10] },
+    { name: 'dimH', 'fx': '', 'desc': 'Diminished (half-whole)', 'modeOf': 'Diminished', 'aSteps': [0, 1, 3, 4, 6, 7, 9, 10] }, //	diminished
+    { name: 'dimW', 'fx': '', 'desc': 'Diminished (whole-half)', 'modeOf': 'Diminished', 'aSteps': [0, 2, 3, 5, 6, 8, 9, 11] },
+    { name: 'aug', 'fx': '', 'desc': 'Augmented', 'modeOf': 'Augmented', 'aSteps': [0, 3, 4, 7, 8, 11] }, //	augmented
+    { name: 'augI', 'fx': '', 'desc': 'Augmented Inverse', 'modeOf': 'Augmented', 'aSteps': [0, 1, 4, 5, 8, 9] },
+    { name: 'whole', 'fx': '', 'desc': 'Whole Tone', 'modeOf': '', 'aSteps': [0, 2, 4, 6, 8, 10] }
