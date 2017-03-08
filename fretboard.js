@@ -10,13 +10,14 @@ var neckMargin = 10;    //  distance between top/bottom of fretboard and 1st/las
 var stringMargin = 30;  //  distance between strings
 var fbHeight = 0;       //  height of fretboard
 var aNotes = [];        //  holds note objects
-var aDegrees = new Array('Root', 'b2 / b9', '2 / 9', 'b3rd / #9', '3rd', '4th', 'b5th', '5th', '#5 / b13', '6 / 13', 'b7th', '7th');
+var aDegrees = new Array('Root', 'b2 / b9', '2 / 9', 'b3rd / #9', '3rd', '4th', 'b5 / #11', '5th', '#5 / b13', '6 / 13', 'b7th', '7th');
 //						    0        1         2           3        4       5      6       7       8          9       10      11
 var aColors = new Array('#FF0000', '#FE3300', '#FF5500', '#FFAA00', '#FFFF00', '#008000', '#007777', '#0000FF', '#481AB2', '#4B0082', '#990188', '#EE82EE');
 //                          r         r-o         o          o-y        y          y-g         g         g-b        b           b-i        i        v
 var aSteps = []; //	steps (numeric values) for ea tone of the current scale or chord
 var aScales = []; //	arr of 'known scale' objects containing name, desc, modeOf and a nested arr of steps
 var oScale = null;
+var aChords = [];   //  array of chord objs from chords.json file
 var aOpts = []; //	arr of suggested scale objs from analyzeChord()
 var svgNS = "http://www.w3.org/2000/svg";
 var bSuperimpose = false;   //  indicates that we are superimposing one tonality over another (so don't clear the notesLayer)
@@ -27,18 +28,22 @@ var root = '';      //  this is used to hold the value of the roots dropdown on 
 function start()
 {
     adjust();
+    getScales();
+    getChords();
     try
     {
         //  assume a C Major Chord to get started:
         $$('types').value = 'chord';
-        buildTonalities();
+        //buildTonalities(); find();
+        setTimeout(buildTonalities, 500);
+        //setTimeout(find, 500);
     } catch (e)
     {
         alert('An error has occurred while the page was loading:\n\n' + e.message);
     } finally
     {
         drawFretboard();
-        find();
+        setTimeout(find,1000);
     }
 }
 //#region View Model
@@ -386,6 +391,8 @@ function clearNotes()
     $$('analyzeResult').innerHTML = '';
     $$('analyzeResult').style.display = 'none';
     $$('descArea').innerHTML = 'Please select Chord or Scale';
+    $$('roots').selectedIndex = -1;
+    $$('tonalities').selectedIndex = -1;
     bSuperimpose = false;
 }
 
@@ -646,47 +653,32 @@ function buildTonalities()
 {
     if ($$('types').value === 'chord')
     {
-        var s = '<select id="tonalities" onchange="find();" size=12 title="Click to Select the Chord Type to display">';
-        s += '<option selected>Major';
-        s += '<option>Minor';
-        s += '<option>dim';
-        s += '<option>aug';
-        s += '<option>sus2';
-        s += '<option>sus4';
-        s += '<option>6';
-        s += '<option>7';
-        s += '<option>maj7';
-        s += '<option>9';
-        s += '<option>add9';
-        s += '<option>m6';
-        s += '<option>m7';
-        s += '<option>dim7';
-        s += '<option>mmaj7';
-        s += '<option>mmaj9';
-        s += '<option>maj11';
-        s += '<option>m9';
-        s += '<option>11';
-        s += '<option>7sus4';
-        s += '<option>13';
-        s += '<option>6add9';
-        s += '<option>-5';
-        s += '<option>7b5';
-        s += '<option>7+5';
-        s += '<option>7b9';
-        s += '<option>7#9';
-        s += '<option>7b5b9';
-        s += '<option>7#5b9';
-        s += '<option>7#5#9';
-        s += '<option>9b5';
-        s += '<option>9#5';
-        s += '<option>13b9';
-        s += '<option>13#9';
-        s += '</select>';
-        $$('tonalArea').innerHTML = s;
+        var html = '<select id="tonalities" onchange="find();" title="Click to Select the Chord Type to display">';
+        var bGroup = false;
+        var member = '';
+        var a = aChords;
+        for (var i in a)
+        {
+            if (a[i].memberOf !== member && bGroup) //	end group if there is one and the current/next item does not belong to the group
+            {
+                html += '</optgroup>';
+                bGroup = false;
+            }
+            if (a[i].memberOf !== '' && !bGroup) //	start a group if there is one and it is not in progress
+            {
+                html += '<optgroup label="' + a[i].memberOf + '">';
+                member = a[i].memberOf;
+                bGroup = true;
+            }
+            html += '<option value="' + a[i].name + '">' + a[i].name;
+        }
+        html += '</select>';
+        $$('tonalArea').innerHTML = html;
+        $$('tonalities').selectedIndex = 0; //  when we switch from chord to scale, select Ionian Mode so that default notes are drawn
     } else
     {
         var html = '';
-        html += '<select id="tonalities" SIZE=12 onchange="find();" title="Click to Select the Scale you would like to display">';
+        html += '<select id="tonalities"  onchange="find();" title="Click to Select the Scale you would like to display">';
         var bGroup = false;
         var mode = '';
         var a = aScales;
@@ -709,28 +701,47 @@ function buildTonalities()
         $$('tonalArea').innerHTML = html;
         $$('tonalities').selectedIndex = 0; //  when we switch from chord to scale, select Ionian Mode so that default notes are drawn
     }
-    $$('tonalities').size = 12;
+    //$$('tonalities').size = 12;
     $$('analyzeResult').style.display = 'none';
 }
 
 //  ========================================================================================================
 //          Define Scales
 //  ========================================================================================================
-/*      getting error in Chrome with this.  URGH!
-var xmlhttp = new XMLHttpRequest();
-var url = "http://drewnuttall.com/scales.json";
-
-xmlhttp.onreadystatechange = function ()
+/*     getting error in Chrome with this.  URGH!*/
+function getScales()
 {
-    if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
-    {
-        aScales = JSON.parse(xmlhttp.responseText);
-    }
-};
-xmlhttp.open("GET", url, true);
-xmlhttp.send();
-*/
+    var xmlhttp = new XMLHttpRequest();
+    //var url = "http://www.drewnuttall.com/scales.json";
+    var url = "scales.json";
 
+    xmlhttp.onreadystatechange = function ()
+    {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
+        {
+            aScales = JSON.parse(xmlhttp.responseText);
+        }
+    };
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+}
+
+function getChords()
+{
+    var xmlhttp = new XMLHttpRequest();
+    var url = 'chords.json';
+    xmlhttp.onreadystatechange = function ()
+    {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
+        {
+            aChords = JSON.parse(xmlhttp.responseText);
+        }
+    };
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+}
+
+/*
 aScales.push(
     { name: 'ionian', 'fx': 'I', 'desc': 'I Ionian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 11] }, //	major
     { name: 'dorian', 'fx': 'ii', 'desc': 'ii Dorian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
@@ -770,9 +781,8 @@ aScales.push(
     { name: 'blues', 'fx': '', 'desc': 'Blues', 'modeOf': '', 'aSteps': [0, 3, 5, 6, 7, 10] }, // blues
     { name: 'Major Pentatonic b7', 'fx': '', 'desc': 'Major Penatatonic b7', 'modeOf': '', 'aSteps': [0, 2, 4, 7, 10] }, // major pent b7
     { name: 'Minor Pentatonic 6', 'fx': '', 'desc': 'Minor Penatatonic 6', 'modeOf': '', 'aSteps': [0, 3, 5, 7, 9] }, // 
-    { name: 'Harmonic Major', 'fx': '', 'desc': 'Harmonic Major', 'modeOf': '', 'aSteps': [0, 2, 4, 5, 7, 8, 11] },
-    { name: 'Major/Minor', 'fx': '', 'desc': 'Major/Minor', 'modeOf': '', 'aSteps': [0, 2, 3, 4, 5, 7, 8, 9, 10, 11] }
-);
+    { name: 'Harmonic Major', 'fx': '', 'desc': 'Harmonic Major', 'modeOf': '', 'aSteps': [0, 2, 4, 5, 7, 8, 11] }
+);*/
 
 //#endregion
 
@@ -852,6 +862,7 @@ function createNotes()
 }
 function find()
 {
+    //alert(arguments.callee.caller.toString());
     if (!bSuperimpose)
     {
         clearAll();
@@ -902,7 +913,15 @@ function analyzeChord()
     {
         for (var i in aOpts)
         {
-            s += '<a onclick="$$(\'types\').value = \'scale\';$$(\'types\').onchange();$$(\'tonalities\').value = \'' + aOpts[i].name + '\';find();" href="#" title="Click to Display this Scale.">' + aOpts[i].desc + '</a><br/>';
+            var s2 = '';
+            if (aOpts[i].modeOf === '')
+            {
+                s2 += aOpts[i].desc;
+            } else
+            {
+                s2 = aOpts[i].desc + ' (Mode ' + aOpts[i].fx + ' of ' + aOpts[i].modeOf + ')';
+            }            
+            s += '<a onclick="$$(\'types\').value = \'scale\';$$(\'types\').onchange();$$(\'tonalities\').value = \'' + aOpts[i].name + '\';find();" href="#" title="Click to Display this Scale.">' + s2 + '</a><br/>';
         }
     } else
     {
@@ -1033,7 +1052,7 @@ function getTonality()
     } else
     {
         desc += $$('tonalities').value + ' ' + $$('types').value + '.';
-        desc += '<span class="hint"> Hint:  Click "Analyze" to find Scales which work over this Chord.</span>';
+        //desc += '<span class="hint"> Hint:  Click "Analyze" to find Scales which work over this Chord.</span>';
     }
     $$('descArea').innerHTML = desc;
     if (bSuperimpose)
@@ -1043,7 +1062,7 @@ function getTonality()
     {
         $$('degreesArea').innerHTML = html;
     }
-    $$('degreesArea').style.display = 'inline-block';
+    $$('degreesArea').style.display = 'inline';
 
     function draw(color, bSmall) // this is (simplified) drawing of the notes in the degree table
     {
@@ -1068,6 +1087,14 @@ function getTonality()
 
 function getChord()
 {
+    for (var i in aChords)
+    {
+        if($$('tonalities').value === aChords[i].name)
+        {
+            aSteps = aChords[i].aSteps;
+        }
+    }
+    return;
     if ($$('tonalities').value === 'Major')
     {
         aSteps = new Array(0, 4, 7);
@@ -1107,6 +1134,10 @@ function getChord()
     if ($$('tonalities').value === 'm7')
     {
         aSteps = new Array(0, 3, 7, 10);
+    }
+    if ($$('tonalities').value === 'm7b5')
+    {
+        aSteps = new Array(0, 3, 6, 10);
     }
     if ($$('tonalities').value === 'dim7')
     {
@@ -1209,7 +1240,7 @@ function getChord()
         aSteps = new Array(0, 4, 7, 9, 10, 1);
     }
     //		var aDegrees = new Array('Root','b2nd','2nd','b3rd','3rd','4th','b5th','5th','b6th','6th','b7th','7th');
-    //				        					     0     1          2     3      4     5      6       7      8      9      10     11
+    //				     		     0     1          2     3      4     5    6      7      8      9      10     11
 }
 
 function getScale()
@@ -1244,5 +1275,28 @@ function $$(id)
     {
         alert('Object not returned: ' + id);
     }
+}
+
+function menuNav()
+{
+    var e = event;
+    var oTrigger = e.srcElement;
+    var a = document.querySelectorAll('.menu ul li a');
+    var n = null;
+    for (var i = 0; i < a.length; i++)
+    {
+        a[i].className = "";
+        if (a[i] == oTrigger)
+        {
+            n = i;
+        }
+    }
+    a[n].className = "activeTab";
+    var a = document.querySelectorAll('.menuTarget');
+    for (var i = 0; i < a.length; i++)
+    {
+        a[i].style.display = 'none';
+    }
+    a[n].style.display = 'inline';
 }
 //#endregion

@@ -3,84 +3,30 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="Guitar Chord and Scale Learning Software" content="guitar,chord,scale,color,harmony,theory,visualization,svg,html5,css3,drew nuttall"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="text/javascript" language="javascript" src="fretboard.js"></script>
+    <link type="text/css" href="fretboard.css" rel="stylesheet"/>
     <title>Fretboard Visualization</title>
-    <style>
-        body
-        {
-            font-family: Verdana, Arial, Helvetica, sans-serif;
-            /*font-size: 10px;
-            font-weight: bold;*/
-            background-color: black;
-            color: white;
-        }
-        div {
-            border-radius: 5px;
-            padding: 5px;
-        }
-        #d1 span {
-            text-align: center;
-            display: inline-block;
-            vertical-align: top;
-            padding-left: 5px;
-        }
-        #d1
-        {
-            color: white;
-            vertical-align: top;
-            background: #666;
-            width: 700px;
-            position: relative;
-        }
-        /* unvisited link */
-        a:link {
-            color: #FF0000;
-        }
-
-        /* visited link */
-        a:visited {
-            color: #00FF00;
-        }
-
-        /* mouse over link */
-        a:hover {
-            color: #FF00FF;
-        }
-
-        /* selected link */
-        a:active {
-            color: #0000FF;
-        }
-        .hint {
-            font-weight: normal;
-            font-style: italic;
-        }
-        .group {
-            border-radius: 5px;
-            background: #333;
-            color: white;
-            padding: 5px;
-        }
-     
-    </style>
 </head>
 <body onload="start();">
-
     <!--#region View -->
     <div id="d0" align="center" style="vertical-align: bottom">
+
         <svg id="fretboard" xMinYMax meet width="100%" height="10%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <defs>
                 <pattern id="wood" patternUnits="userSpaceOnUse" x="0" y="0" width="185" height="170">
                     <image id="woodImage" width="185" height="170" xlink:href="http://drewnuttall.com/ebony.jpg"></image>
                 </pattern>
                 <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                    <stop offset="0%" style="stop-color: lightsalmon; stop-opacity: 1"/>
-                    <stop offset="100%" style="stop-color: white; stop-opacity: 1"/>
+                    <stop offset="0%" style="stop-color: lightsalmon; stop-opacity: 1" />
+                    <stop offset="100%" style="stop-color: white; stop-opacity: 1" />
                 </radialGradient>
             </defs>
-            <style >
+            <style>
                 /* <![CDATA[ */
-                #userLayer {
+                #userLayer
+                {
                     cursor: pointer;
                 }
                 /* ]]> */
@@ -90,12 +36,28 @@
             <g id="userLayer"></g>
         </svg>
     </div>
-    <div id="d1" align="center" style="color: white; vertical-align: top; background: #666; width: 60%; text-align: center; margin-left: 15%;">
-        <p style="font-weight: normal; font-style: italic;">Choose a Chord or Scale to display.  Notes are color-coded according to their relationship to the Root.  Click 'Analyze' to find what Scales to use over a given Chord.  Use the 'View' and 'Pan' controls to show only the part of the Fretboard you want to concentrate on.</p>
-        <div id="descArea">
-            Choose a Scale or Chord
-        </div>
-        <div style="display:none;">
+    <div class="menu" style="margin-left:17%;padding-bottom:10px;">
+        <ul>
+            <li>
+                <a onclick="menuNav();" class="activeTab">Controls</a>
+            </li>
+            <li>
+                <a onclick="menuNav();">View</a>
+            </li>
+            <li>
+                <a onclick="menuNav();">Options</a>
+            </li>
+            <li>
+                <a onclick="menuNav();">Help</a>
+            </li>
+        </ul>
+    </div>
+    <!--<div class="menuTarget">Controls Area</div>
+    <div class="menuTarget">View Area</div>
+    <div class="menuTarget">Options Area</div>
+    <div class="menuTarget">Help Area</div>-->
+    <div id="d1" align="center" style="color: white; vertical-align: top; background: #666; width: 60%; text-align: center; margin-left: 15%; overflow:auto;">
+        <div style="display: none;">
             <!--this section is used for experimenting with different views-->
             <input id="viewArea"><button onlick="$$('fretboard').setAttribute('viewBox', viewArea.value);">Set</button><br />
             vb min-x (pan):
@@ -116,32 +78,43 @@
             <input id="r6" type="range" value="1080" style="width: auto;" min="-2000" max="2000" onchange="adjust();" />
             <output for="r6" id="r6o"></output>
         </div>
-        <span>
-            <select id="types" size="2" onchange="buildTonalities();" title="Click to Select either a Chord or a Scale to Display" style="vertical-align: top;"><option value="chord" selected>Chord</option><option value="scale">Scale</option></select>
-            <select id="roots" size="12" onchange="" title="Click to Select the Root of the Chord or Scale"><option selected value="C">C<option value="C#">C#<option value="D">D<option value="D#">D#<option value="E">E<option value="F">F<option value="F#">F#<option value="G">G<option value="G#">G#<option value="A">A<option value="A#">A#<option value="B">B</select>
+        <!--=================================================== Controls Area-->
+        <span class="menuTarget" style="display:inline;">
+            <span id="degreesArea" class="group" style="float:left;"></span>
+            <span>
+                <select id="types" size="1" onchange="buildTonalities(); find();" title="Click to Select either a Chord or a Scale to Display" style="vertical-align: top;"><option value="chord" selected>Chord</option><option value="scale">Scale</option></select>
+                <select id="roots" size="1" onchange="find()" title="Click to Select the Root of the Chord or Scale"><option selected value="C">C<option value="C#">C#<option value="D">D<option value="D#">D#<option value="E">E<option value="F">F<option value="F#">F#<option value="G">G<option value="G#">G#<option value="A">A<option value="A#">A#<option value="B">B</select>
+            </span>
+            <span id="tonalArea" style="display:inline"></span>
+            <span>
+                <button onclick="find();" accesskey="d" title="Click to Display the Notes of the currently selected Chord or Scale on the Fretboard"><u>D</u>isplay</button>
+                <!--<button onclick="superimpose();" accesskey="s" title="Click to Superimpose another scale/mode or chord over the current one."><u>S</u>uperimpose</button><br /><br />-->
+                <button onclick="clearNotes();" accesskey="c" title="Click to remove the Notes from the Fretboard"><u>C</u>lear</button>
+                <button onclick="analyzeChord()" accesskey="a" title="Click to find Scales which work over the currently selected Tonality"><u>A</u>nalyze</button>
+                <span id="analyzeResult" class="group" style="display: none;font-size:20px;"></span>
+                <span id="gripsArea" style="display:none;"><input id="cbGrips" type="checkbox" accesskey="g"/><label for="cbGrips"><u>G</u>rips View</label></span>
+            </span>
         </span>
-        <span id="tonalArea" style="text-align: center; display: inline; vertical-align: top;"></span>
-        <span>
-            <button onclick="find();" accesskey="d" title="Click to Display the Notes of the currently selected Chord or Scale on the Fretboard"><u>D</u>isplay</button><br /><br />
-            <!--<button onclick="superimpose();" accesskey="s" title="Click to Superimpose another scale/mode or chord over the current one."><u>S</u>uperimpose</button><br /><br />-->
-            <button onclick="clearNotes();" accesskey="c" title="Click to remove the Notes from the Fretboard"><u>C</u>lear</button><br /><br />
-            <button onclick="analyzeChord()" accesskey="a" title="Click to find Scales which work over the currently selected Tonality"><u>A</u>nalyze</button><br /><br />
-            <span id="analyzeResult" class="group" style="display: none;"></span>
-        </span>
-        <span id="degreesArea" class="group"></span>
-        <span>
-            <label for="views"><u>V</u>iew:</label><br />
+        <!--=================================================== View Area-->
+        <span class="menuTarget">
+            <label for="views"><u>V</u>iew:</label>
             <select id="views" accesskey="v" onchange="autoAdjust()">
                 <option value="n">Normal</option>
-                <option value="z1" >Zoom</option>
+                <option value="z1">Zoom</option>
                 <option value="z2">Tight Zoom</option>
             </select>
-            <br /><br />
-            <label for="r1"><a href="#" style="text-decoration: none;" onclick="panLeft();"><<</a> &nbsp;&nbsp;&nbsp;&nbsp;<u>P</u>an:&nbsp;&nbsp;&nbsp; <a href="#" style="text-decoration: none;" onclick="panRight();">>></a></label>
             <br />
-            <input id="r1" accesskey="p" type="range" step="2" value="0" style="" min="" max="820" onchange="adjust();" />
-            <br /><br />
-            <label for="tunings"><u>T</u>uning</label><br />
+            <span>
+                <label for="r1">
+                    <a href="#" style="text-decoration: none;" onclick="panLeft();"><<</a> &nbsp;&nbsp;&nbsp;&nbsp;<u>P</u>an:&nbsp;&nbsp;&nbsp; <a href="#" style="text-decoration: none;" onclick="panRight();">>></a>
+                </label>
+                <br />
+                <input id="r1" accesskey="p" type="range" step="2" value="0" style="" min="" max="820" onchange="adjust();" />
+            </span>
+        </span>
+        <!--=================================================== Options Area-->
+        <span class="menuTarget">
+            <label for="tunings"><u>T</u>uning:</label>
             <select id="tunings" onchange="changeTuning();">
                 <option value="standard" title="E A D G B E">Standard</option>
                 <option value="dropD" title="D A D G B E">Drop D</option>
@@ -149,25 +122,38 @@
                 <option value="openE" title="E B E G♯ B E">Open E</option>
                 <option value="dadgad" title="D A D G A D">DADGAD</option>
             </select>
-            <br /><br />
             <label for="instruments"><u>I</u>nstrument</label>
-            <br />
             <select id="instruments" accesskey="i" onchange="changeInstrument();">
                 <option value="guitar">Guitar</option>
                 <option value="mandolin">Mandolin</option>
                 <option value="uke">Ukelele</option>
                 <!--<option value="banjo">Banjo</option>-->
             </select>
-            <br /><br />
-            <label for="viewstyles"><u>B</u>ackground:</label><br />
+            <label for="viewstyles"><u>B</u>ackground:</label>
             <select id="viewstyles" onchange="changeViewStyle();" accesskey="b">
                 <option value="rosewood">Rosewood</option>
                 <option value="ebony" selected>Ebony</option>
                 <option value="simple">None</option>
             </select>
         </span>
+        <!--=================================================== Help Area-->
+        
+        <span class="menuTarget">
+            <div id="descArea">Choose a Scale or Chord</div>    
+            <ul style="text-align:left">
+                <li>On the <b>Controls Tab</b>, choose a Chord or Scale to display. Notes are color-coded according to their relationship to the Root.</li>
+
+                <li>Click 'Analyze' to find what Scales to use over a given Chord.  Then, click the resulting Scale(s) to display them on the fretboard.</li>
+           
+                <li>On the <b>View Tab</b>, use the 'View' and 'Pan' controls to show only the part of the Fretboard you want to concentrate on.</li>
+           
+                <li>Mouseover the fretboard to temporarily view other note values and click the note to toggle it on or off.</li>
+           
+                <li>On the <b>Options Tab</b>, you can change the Tuning, the Instrument and the Fretboard background.</li>
+            </ul>
+        </span>
     </div>
     <!-- endregion -->
-    
+
 </body>
 </html>
