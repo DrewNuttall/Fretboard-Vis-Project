@@ -1,0 +1,123 @@
+﻿body {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 1vw;
+  background-color: black;
+  color: white;
+}
+#header {
+  text-align: center;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: x-large;
+  font-weight: bolder;
+}
+
+#fsLogo {
+  border-radius: 10px;
+  box-shadow: 0px 0px 2px 2px #8a25b1;
+}
+div {
+  border-radius: 5px;
+  padding: 5px;
+}
+
+#d0 {
+  white-space: nowrap;
+}
+
+#degreesArea {
+  font-size: 1ev;
+}
+
+span {
+  text-align: center;
+  display: inline;
+  vertical-align: top;
+  padding-left: 5px;
+}
+#d1 {
+  color: white;
+  background: #666;
+  width: 700px;
+  position: relative;
+}
+/* unvisited link */
+a:link {
+  color: #ff0000;
+}
+
+/* visited link */
+a:visited {
+  color: #00ff00;
+}
+
+/* mouse over link */
+a:hover {
+  color: #ff00ff;
+}
+
+/* selected link */
+a:active {
+  color: #0000ff;
+}
+.hint {
+  font-weight: normal;
+  font-style: italic;
+}
+.group {
+  border-radius: 5px;
+  background: #333;
+  color: white;
+  padding: 5px;
+}
+/*      Form Styles     */
+input,
+textarea,
+select,
+button {
+  font-size: 1ev;
+}
+.menu ul {
+  display: inline;
+  text-decoration: none;
+  text-align: left;
+  overflow: hidden;
+}
+
+.menu ul li {
+  display: inline;
+  /*float: left;*/
+  padding: 5px;
+}
+
+.menu ul li a {
+  background-color: #333;
+  color: white;
+  padding: 10px 20px;
+  text-decoration: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+
+.menu ul li a:hover {
+  background-color: orange;
+}
+/*
+        .menu ul li a:active
+        {
+            background-color: white;
+            color: black;
+        }
+            */
+.menu ul li .activeTab {
+  background-color: #666;
+  color: white;
+  cursor: default;
+}
+
+.menu ul li {
+  text-align: left;
+}
+
+.menuTarget {
+  display: none;
+}
