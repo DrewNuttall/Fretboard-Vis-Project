@@ -19,17 +19,26 @@ var aScales = []; //	arr of 'known scale' objects containing name, desc, modeOf 
 var oScale = null;
 var aChords = [];   //  array of chord objs from chords.json file
 var aOpts = []; //	arr of suggested scale objs from analyzeChord()
-var svgNS = "http://www.w3.org/2000/svg";
+var svgNS = "http://www.w3.org/2000/svg";//"https://www.w3.org/TR/SVG/";
 var bSuperimpose = false;   //  indicates that we are superimposing one tonality over another (so don't clear the notesLayer)
 var bUserNotesExist = false;    //  indicates that the user is adding notes manually - ask before clearing the userLayer
 var root = '';      //  this is used to hold the value of the roots dropdown on superimpose
+var aChord = [];    //  not to be confused with aChords, when the tonality is a chord, this array will hold step, name and degree of each note in the chord
 
 //#endregion
+
+
 function start()
 {
+    $$('yearArea').innerHTML = new Date().getFullYear();
+    $$('viewstyles').value = 'simple';
+    //$$('viewstyles').disabled = 'true';
     adjust();
     getScales();
+    //console.log(aScales);
     getChords();
+    //console.log(aChords);
+    //console.log(svgNS)
     try
     {
         //  assume a C Major Chord to get started:
@@ -126,8 +135,9 @@ function drawFretboard()
     var y = fbHeight / 2;
     for (var i = 0; i < numFrets; i++)
     {
-        var x = $$('f' + i).x1.baseVal.value;
-        var newX = ((x - prevX) / 2) + prevX;
+        //console.log($$('f' + i).x1);
+        var x = $$('f' + i).getAttribute('x1'); //.baseVal.value;
+        var newX = ((x - prevX) / 2) + Number(prevX);
         drawFretNumber(newX, i);
         if (i === 2 || i === 4 || i === 6 || i === 8 || i === 14 || i === 16 || i === 18 || i === 20)
         {
@@ -207,7 +217,7 @@ function drawNote(o)
     var data = document.createTextNode(o.n);
     var text = document.createElementNS(svgNS, "text");
     text.setAttributeNS(null, "x", o.x);
-    text.setAttributeNS(null, "y", (o.y + 3)); // align vertical
+    text.setAttributeNS(null, "y", (Number(o.y) + 3)); // align vertical
     text.setAttributeNS(null, "text-anchor", "middle");
     text.setAttributeNS(null, "font-weight", "normal");
     text.setAttributeNS(null, "font-size", "8px");
@@ -490,8 +500,306 @@ function drawTonality(n, c, b)
     }
 }
 
+function drawChordGrip()
+{
+    aStrings = [];  //reset
+    //   shift the aChord array so that it begins with the requested bass note from inversion dropdown:
+    do{
+        aChord.unshift(aChord.pop());
+    }while(aChord[0].step != $$('inversion').value)
+    //  find our starting point on the neck:
+    //aNotes.reverse();   //  (start from the lowest)
+    var bassString = '';
+    var aStrings = [];
+    var vPos = $$('vPos').value;
+
+    if (vPos == 'high')
+    {
+        bassString = aChord.length;
+    } else if (vPos == 'highmid')
+    {
+        bassString = aChord.length + 1;
+    } else if (vPos == 'lowmid')
+    {
+        bassString = 5;
+    } else
+    {
+        bassString = 6;
+    }
+
+    // populate the aStrings arr counting backwards from the bass string to 1
+    for(var i = bassString; i > 0; i--)
+    {
+        aStrings.push({ 'num': i, 'notes': [] });
+        
+    }
+    console.log(aStrings)
+    console.log(aChord);
+    var n = 0;  //   counter for aChord
+    var fret; //   target fret (based on the bass fret)
+
+
+    // find our bass note and add it to the aStrings arr
+    for (var i in aNotes)
+    {
+        if(aNotes[i].s != bassString)
+        {
+            continue;
+        }
+        if(aNotes[i].n == aChord[n].name)
+        {
+            fret = Number(aNotes[i].f);
+            aNotes[i].c = aColors[aChord[n].step];   //     set color
+            aChord[0].found = [aNotes[i]];
+            addNote(bassString, aNotes[i]);
+
+            break;
+        }
+    }
+
+    //  now find any remaining chord tones by string, working down from the bass string and add them to each string's notes (aStrings[x].notes arr):
+    for (var i = bassString - 1; i > 0; i--)
+    {
+        for(var j in aChord)
+        {
+            findChordTone(i, aChord[j].name, aColors[aChord[j].step]);
+        }
+    }
+
+    function findChordTone(string, name, color)
+    {
+        for (var i in aNotes)
+        {
+            if (aNotes[i].s != string || (aNotes[i].f < fret - 2 || aNotes[i].f > fret + 2)/* && aNotes[i].f != 0*/)
+            {
+                continue;
+            }
+            if (aNotes[i].n == name)
+            {
+                aNotes[i].c = color   //     set color
+                addNote(string,aNotes[i]);
+            }
+        }
+    }
+
+    // for strings with > 1 note in the notes arr, rate each note so that the best note can be chosen
+
+    // note rating system factors:
+    /*
+     * 1 - ??
+     * 2 - unique (appears nowhere else)
+     * 3 - 3rd
+     * 4 - 4th
+     * 5 - is repeated
+     * 6 - is root
+     * 7 - already locked into decision tree
+     * 8 - ?? 
+     */
+    for (var i in aStrings)
+    {
+        var a = aStrings[i].notes;
+        
+        for (var j = 0; j < a.length; j++)
+        {
+            var o = a[j];
+            o.rating = getRating(o, i, j);
+        }
+        a.note = null;
+    }
+    // final analysis for more than one note per string
+    for (var i in aStrings)
+    {
+        var a = aStrings[i].notes;
+        for (var j = 0; j < a.length; j++)
+        {
+            //  now that we (may) have chosen or assigned each string's .note value (in a previous iteration of this loop), reassess with that in mind.  (add 7 to its rating if it's already chosen for another string)
+            if (isChosen(a[j], i))
+            {
+                a[j].rating += 2;
+                console.log('isChosen = true (+2) for ' + a[j].n + ' on ' + a[j].f + ' of ' + a[j].s);
+                // if it is color tone, we might not want to repeat it:
+                var n = getStepByName(a[j].n); 
+                if((n > 0 && n < 3) || n == 5 || n > 7)
+                {
+                    a[j].rating += 2;
+                    console.log('is Color tone = true (+7) for ' + a[j].n + ' on ' + a[j].f + ' of ' + a[j].s);
+                }
+            }
+        }
+        
+        // if there is not more than one possible, assign the .note value
+        if (aStrings[i].notes.length == 1)
+        {
+            aStrings[i].note = aStrings[i].notes[0];
+        } else
+        {
+            //  otherwise, sort the possibles by .rating and assign the lowest rating
+            aStrings[i].notes.sort(compare);
+            function compare(a, b)
+            {
+                return a.rating - b.rating;
+            }
+            aStrings[i].note = aStrings[i].notes[0];
+        }
+    }
+    //  look for obvious mistakes like missing chord tones and awkward fingerings:
+    for (var i in aChord)
+    {
+        if (isMissing(aChord[i].name))
+        {
+            console.log(aChord[i].name + ' is MISSING');
+        }
+    }
+
+    function isMissing(name)
+    {
+        for (var i in aStrings)
+        {
+            if (aStrings[i].note.n == name)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function fixMissing(name)
+    {
+
+    }
+    //  draw the chosen .note for ea string
+    for (var i in aStrings)
+    {
+        drawNote(aStrings[i].note);
+    }
+    console.log(aStrings);
+
+    // helper functions:
+    function isChosen(o, aStrPos)
+    {
+        var b = false;
+        var name = o.n;
+        for (var i in aStrings)
+        {
+            if (aStrings[i].note) // if no note has been chosen this will be null
+            {
+                if (aStrings[i].note.n == name && aStrPos != i)  // this ensures that we are not looking at the instance of the note that was sent into this fn (o)
+                {
+                    b = true;
+                }
+            }
+        }
+        return b;
+    }
+    function getRating(o,i,j)
+    {
+        var n = 0; // rating number
+        if (i == 0) //  bass note.  needs to have perfect rating
+        {
+            return n;
+        }
+        if (isUnique(o,i,j))
+        {
+            n +- 2;
+            console.log('isUnique = true (-2) for ' + o.n + ' on ' + o.f + ' of ' + o.s);
+        }
+        var step = getStepByName(o.n);
+        if (step > 2 && step < 5) // 3rd
+        {
+            n += 4;
+            console.log('is 3rd = true (+4) for ' + o.n + ' on ' + o.f + ' of ' + o.s);
+        }
+        if (step > 5 && step < 9) // 5th (can be b or #)
+        {
+            n += 3;
+            console.log('is 5th = true (+3) for ' + o.n + ' on ' + o.f + ' of ' + o.s);
+        }
+        if (o.n == $$('inversion').value)
+        {
+            n += 5;
+            console.log('is bass note = true (+5) for ' + o.n + ' on ' + o.f + ' of ' + o.s);
+        }
+        
+        return n;
+
+        //  helper functions for getRating():
+        function isUnique(o,aStrPos,aNotePos)
+        {
+            var b = true;
+            var name = o.n;
+            for(var i in aStrings)
+            {
+                var a = aStrings[i].notes;
+                for (var j = 0; j < a.length; j++)
+                {
+                    if(a[j].n == name && aStrPos != i && aNotePos != j)  // this ensures that we are not looking at the instance of the note that was sent into this fn (o)
+                    {
+                        b = false;
+                    }
+                }
+            }
+            return b;
+        }
+
+    }
+
+    function getStepByName(name)
+    {
+        for (var i in aChord)
+        {
+            if (aChord[i].name == name)
+            {
+                return aChord[i].step;
+            }
+        }
+    }
+
+    function addNote(n, o) // add a note to the aStrings arr. n = str num, o = note obj
+    {
+        for(var i in aStrings)
+        {
+            if(aStrings[i].num == n)
+            {
+                aStrings[i].notes.push(o);
+                return;
+            }
+        }
+        alert('fn addNote() failed.  Cannot find string num ' + n + ' in aStrings to add note ' + o.n + ' at fret ' + o.f);
+    }
+}
+
+function gripsClick(b)
+{
+    showHide(b, $$('gripsOptionsArea'));
+    if(b)
+    {
+        var startNote = '';
+        $$('vPos').options.length = 0;
+        $$('inversion').options.length = 0;
+        if($$('types').value == 'chord')
+        {
+            $$('vPos').options[$$('vPos').options.length] = new Option('Low', 'low');
+            if($$('instruments').value == 'guitar' || numStrings > 4)
+            {
+                $$('vPos').options[$$('vPos').options.length] = new Option('High-Mid', 'highmid');
+                $$('vPos').options[$$('vPos').options.length] = new Option('Low-Mid', 'lowmid');
+            }
+            $$('vPos').options[$$('vPos').options.length] = new Option('High', 'high');
+
+            for(var i in aSteps)
+            {
+                $$('inversion').options[$$('inversion').options.length] = new Option(aDegrees[aSteps[i]], aSteps[i]);
+            }
+        }
+    }
+    find();
+}
+
+
+
 function drawFretNumber(x, n)
 {
+    //console.log(x + ', ' + n);
     n++;
     var data = document.createTextNode(n);
     var num = document.createElementNS(svgNS, "text");
@@ -553,12 +861,15 @@ function changeViewStyle()
 {
     if ($$('viewstyles').value === "ebony")
     {
-        $$('woodImage').setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', "http://drewnuttall.com/ebony.jpg");
+        $$('woodImage').setAttributeNS('http://www.w3.org/1999/xlink', 'href', "https://drewnuttall.com/ebony.jpg");
         $$("fbBackground").setAttribute("fill", "url(#wood)");
     } else if ($$('viewstyles').value === "rosewood")
     {
-        $$('woodImage').setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', "http://drewnuttall.com/rosewood.jpg");
+        $$('woodImage').setAttributeNS('http://www.w3.org/1999/xlink', 'href', "https://drewnuttall.com/rosewood.jpg");
         $$("fbBackground").setAttribute("fill", "url(#wood)");
+    } else if ($$('viewstyles').value === 'white')
+    {
+        $$("fbBackground").setAttribute('fill', "white");
     } else if ($$('viewstyles').value === 'simple')
     {
         $$("fbBackground").setAttribute('fill', "black");
@@ -711,6 +1022,11 @@ function buildTonalities()
 /*     getting error in Chrome with this.  URGH!*/
 function getScales()
 {
+    if (location.href.match(/^file/))
+    {
+        getScalesLocal();
+        return;
+    }
     var xmlhttp = new XMLHttpRequest();
     //var url = "http://www.drewnuttall.com/scales.json";
     var url = "scales.json";
@@ -728,6 +1044,11 @@ function getScales()
 
 function getChords()
 {
+    if (location.href.match(/^file/))
+    {
+        getChordsLocal();
+        return;
+    }
     var xmlhttp = new XMLHttpRequest();
     var url = 'chords.json';
     xmlhttp.onreadystatechange = function ()
@@ -736,53 +1057,120 @@ function getChords()
         {
             aChords = JSON.parse(xmlhttp.responseText);
         }
+        //alert('fretboard.js.getChords() + \n' + xmlhttp.readyState + '\n' + xmlhttp.responseText);
     };
     xmlhttp.open("GET", url, true);
     xmlhttp.send();
 }
 
-/*
-aScales.push(
-    { name: 'ionian', 'fx': 'I', 'desc': 'I Ionian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 11] }, //	major
-    { name: 'dorian', 'fx': 'ii', 'desc': 'ii Dorian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
-    { name: 'phrygian', 'fx': 'iii', 'desc': 'iii Phrygian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
-    { name: 'lydian', 'fx': 'IV', 'desc': 'IV Lydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
-    { name: 'mixolydian', 'fx': 'V', 'desc': 'V Mixolydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
-    { name: 'aeolian', 'fx': 'vi', 'desc': 'vi Aeolian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 8, 10] },
-    { name: 'locrian', 'fx': 'vii-', 'desc': 'vii&deg; Locrian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
-    { name: 'aeolian', 'fx': 'i', 'desc': 'i Aeolian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 10] }, //	minor
-    { name: 'locrian', 'fx': 'ii', 'desc': 'ii&deg; Locrian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
-    { name: 'ionian', 'fx': 'III', 'desc': 'III Ionian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 11] },
-    { name: 'dorian', 'fx': 'iv', 'desc': 'iv Dorian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
-    { name: 'phrygian', 'fx': 'v', 'desc': 'v Phrygian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
-    { name: 'lydian', 'fx': 'VI', 'desc': 'VI Lydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
-    { name: 'mixolydian', 'fx': 'VII', 'desc': 'VII Mixolydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
-    { name: 'Melodic Minor', 'fx': 'i', 'desc': 'i Melodic Minor', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 11] }, //	melodic minor
-    { name: 'Dorian b2', 'fx': 'ii', 'desc': 'ii Dorian b2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 5, 7, 9, 10] },
-    { name: 'Lydian #5', 'fx': 'III', 'desc': 'III Lydian #5', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 8, 9, 11] },
-    { name: 'Lydian Dominant', 'fx': 'IV', 'desc': 'IV Lydian Dominant', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 10] },
-    { name: 'Mixolydian b6', 'fx': 'V', 'desc': 'V Mixolydian b6', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 5, 7, 8, 10] },
-    { name: 'locrian #2', 'fx': 'vi-', 'desc': 'vi&deg; Locrian #2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 6, 8, 10] },
-    { name: 'altered', 'fx': 'vii', 'desc': 'vii&deg; Altered', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 4, 6, 8, 10] },
-    { name: 'Harmonic Minor', 'fx': 'i', 'desc': 'i Aeolian #7', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 11] }, //	harmonic minor
-    { name: 'locrian 6', 'fx': 'ii-', 'desc': 'ii&deg; Locrian #6', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 3, 5, 6, 9, 10] },
-    { name: 'ionian #5', 'fx': 'III', 'desc': 'III Ionian #5', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 4, 5, 8, 9, 11] },
-    { name: 'dorian #4', 'fx': 'iv', 'desc': 'iv Dorian #4', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 6, 7, 9, 10] },
-    { name: 'phrygian major', 'fx': 'V', 'desc': 'V Phrygian Major', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 4, 5, 7, 8, 10] },
-    { name: 'lydian #2', 'fx': 'VI', 'desc': 'VI Lydian #2', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 3, 4, 6, 7, 9, 11] },
-    { name: 'mixolydian #1', 'fx': 'vii-', 'desc': 'vii&deg; Mixolydian #1', 'modeOf': 'Harmonic Minor', 'aSteps': [1, 2, 4, 5, 7, 9, 10] },
-    { name: 'dimH', 'fx': '', 'desc': 'Diminished (half-whole)', 'modeOf': 'Diminished', 'aSteps': [0, 1, 3, 4, 6, 7, 9, 10] }, //	diminished
-    { name: 'dimW', 'fx': '', 'desc': 'Diminished (whole-half)', 'modeOf': 'Diminished', 'aSteps': [0, 2, 3, 5, 6, 8, 9, 11] },
-    { name: 'aug', 'fx': '', 'desc': 'Augmented', 'modeOf': 'Augmented', 'aSteps': [0, 3, 4, 7, 8, 11] }, //	augmented
-    { name: 'augI', 'fx': '', 'desc': 'Augmented Inverse', 'modeOf': 'Augmented', 'aSteps': [0, 1, 4, 5, 8, 9] },
-    { name: 'whole', 'fx': '', 'desc': 'Whole Tone', 'modeOf': '', 'aSteps': [0, 2, 4, 6, 8, 10] },
-    { name: 'Major Pentatonic', 'fx': '', 'desc': 'Major Pentatonic', 'modeOf': '', 'aSteps': [0, 2, 4, 7, 9] },
-    { name: 'Minor Pentatonic', 'fx': '', 'desc': 'Minor Pentatonic', 'modeOf': '', 'aSteps': [0, 3, 5, 7, 10] },
-    { name: 'blues', 'fx': '', 'desc': 'Blues', 'modeOf': '', 'aSteps': [0, 3, 5, 6, 7, 10] }, // blues
-    { name: 'Major Pentatonic b7', 'fx': '', 'desc': 'Major Penatatonic b7', 'modeOf': '', 'aSteps': [0, 2, 4, 7, 10] }, // major pent b7
-    { name: 'Minor Pentatonic 6', 'fx': '', 'desc': 'Minor Penatatonic 6', 'modeOf': '', 'aSteps': [0, 3, 5, 7, 9] }, // 
-    { name: 'Harmonic Major', 'fx': '', 'desc': 'Harmonic Major', 'modeOf': '', 'aSteps': [0, 2, 4, 5, 7, 8, 11] }
-);*/
+function getScalesLocal()
+{
+    aScales.push(
+        { name: 'ionian', 'fx': 'I', 'desc': 'I Ionian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 11] }, //	major
+        { name: 'dorian', 'fx': 'ii', 'desc': 'ii Dorian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
+        { name: 'phrygian', 'fx': 'iii', 'desc': 'iii Phrygian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
+        { name: 'lydian', 'fx': 'IV', 'desc': 'IV Lydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
+        { name: 'mixolydian', 'fx': 'V', 'desc': 'V Mixolydian', 'modeOf': 'Major', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
+        { name: 'aeolian', 'fx': 'vi', 'desc': 'vi Aeolian', 'modeOf': 'Major', 'aSteps': [0, 2, 3, 5, 7, 8, 10] },
+        { name: 'locrian', 'fx': 'vii-', 'desc': 'vii&deg; Locrian', 'modeOf': 'Major', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
+        { name: 'aeolian', 'fx': 'i', 'desc': 'i Aeolian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 10] }, //	minor
+        { name: 'locrian', 'fx': 'ii', 'desc': 'ii&deg; Locrian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 6, 8, 10] },
+        { name: 'ionian', 'fx': 'III', 'desc': 'III Ionian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 11] },
+        { name: 'dorian', 'fx': 'iv', 'desc': 'iv Dorian', 'modeOf': 'Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 10] },
+        { name: 'phrygian', 'fx': 'v', 'desc': 'v Phrygian', 'modeOf': 'Minor', 'aSteps': [0, 1, 3, 5, 7, 8, 10] },
+        { name: 'lydian', 'fx': 'VI', 'desc': 'VI Lydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 11] },
+        { name: 'mixolydian', 'fx': 'VII', 'desc': 'VII Mixolydian', 'modeOf': 'Minor', 'aSteps': [0, 2, 4, 5, 7, 9, 10] },
+        { name: 'Melodic Minor', 'fx': 'i', 'desc': 'i Melodic Minor', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 7, 9, 11] }, //	melodic minor
+        { name: 'Dorian b2', 'fx': 'ii', 'desc': 'ii Dorian b2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 5, 7, 9, 10] },
+        { name: 'Lydian #5', 'fx': 'III', 'desc': 'III Lydian #5', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 8, 9, 11] },
+        { name: 'Lydian Dominant', 'fx': 'IV', 'desc': 'IV Lydian Dominant', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 6, 7, 9, 10] },
+        { name: 'Mixolydian b6', 'fx': 'V', 'desc': 'V Mixolydian b6', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 4, 5, 7, 8, 10] },
+        { name: 'locrian #2', 'fx': 'vi-', 'desc': 'vi&deg; Locrian #2', 'modeOf': 'Melodic Minor', 'aSteps': [0, 2, 3, 5, 6, 8, 10] },
+        { name: 'altered', 'fx': 'vii', 'desc': 'vii&deg; Altered', 'modeOf': 'Melodic Minor', 'aSteps': [0, 1, 3, 4, 6, 8, 10] },
+        { name: 'Harmonic Minor', 'fx': 'i', 'desc': 'i Aeolian #7', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 5, 7, 8, 11] }, //	harmonic minor
+        { name: 'locrian 6', 'fx': 'ii-', 'desc': 'ii&deg; Locrian #6', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 3, 5, 6, 9, 10] },
+        { name: 'ionian #5', 'fx': 'III', 'desc': 'III Ionian #5', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 4, 5, 8, 9, 11] },
+        { name: 'dorian #4', 'fx': 'iv', 'desc': 'iv Dorian #4', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 2, 3, 6, 7, 9, 10] },
+        { name: 'phrygian major', 'fx': 'V', 'desc': 'V Phrygian Major', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 1, 4, 5, 7, 8, 10] },
+        { name: 'lydian #2', 'fx': 'VI', 'desc': 'VI Lydian #2', 'modeOf': 'Harmonic Minor', 'aSteps': [0, 3, 4, 6, 7, 9, 11] },
+        { name: 'mixolydian #1', 'fx': 'vii-', 'desc': 'vii&deg; Mixolydian #1', 'modeOf': 'Harmonic Minor', 'aSteps': [1, 2, 4, 5, 7, 9, 10] },
+        { name: 'dimH', 'fx': '', 'desc': 'Diminished (half-whole)', 'modeOf': 'Diminished', 'aSteps': [0, 1, 3, 4, 6, 7, 9, 10] }, //	diminished
+        { name: 'dimW', 'fx': '', 'desc': 'Diminished (whole-half)', 'modeOf': 'Diminished', 'aSteps': [0, 2, 3, 5, 6, 8, 9, 11] },
+        { name: 'aug', 'fx': '', 'desc': 'Augmented', 'modeOf': 'Augmented', 'aSteps': [0, 3, 4, 7, 8, 11] }, //	augmented
+        { name: 'augI', 'fx': '', 'desc': 'Augmented Inverse', 'modeOf': 'Augmented', 'aSteps': [0, 1, 4, 5, 8, 9] },
+        { name: 'whole', 'fx': '', 'desc': 'Whole Tone', 'modeOf': '', 'aSteps': [0, 2, 4, 6, 8, 10] },
+        { name: 'Major Pentatonic', 'fx': '', 'desc': 'Major Pentatonic', 'modeOf': '', 'aSteps': [0, 2, 4, 7, 9] },
+        { name: 'Minor Pentatonic', 'fx': '', 'desc': 'Minor Pentatonic', 'modeOf': '', 'aSteps': [0, 3, 5, 7, 10] },
+        { name: 'blues', 'fx': '', 'desc': 'Blues', 'modeOf': '', 'aSteps': [0, 3, 5, 6, 7, 10] }, // blues
+        { name: 'Major Pentatonic b7', 'fx': '', 'desc': 'Major Penatatonic b7', 'modeOf': '', 'aSteps': [0, 2, 4, 7, 10] }, // major pent b7
+        { name: 'Minor Pentatonic 6', 'fx': '', 'desc': 'Minor Penatatonic 6', 'modeOf': '', 'aSteps': [0, 3, 5, 7, 9] }, // 
+        { name: 'Harmonic Major', 'fx': '', 'desc': 'Harmonic Major', 'modeOf': '', 'aSteps': [0, 2, 4, 5, 7, 8, 11] }
+    );
+}
+function getChordsLocal()
+{
+    aChords.push(
+        { "name": "Major", "memberOf": "Major", "aSteps": [ 0, 4, 7 ] },
+        { "name": "b5", "memberOf": "Major", "aSteps": [ 0, 4, 6 ] },
+        { "name": "6", "memberOf": "Major", "aSteps": [ 0, 4, 7, 9 ] },
+        { "name": "6add9", "memberOf": "Major", "aSteps": [ 0, 4, 7, 9, 2 ] },
+        { "name": "add9", "memberOf": "Major", "aSteps": [ 0, 4, 7, 2 ] },
+        { "name": "maj7", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11 ] },
+        { "name": "maj7b5", "memberOf": "Major", "aSteps": [ 0, 4, 6, 11 ] },
+        { "name": "maj7#5", "memberOf": "Major", "aSteps": [ 0, 4, 8, 11 ] },
+        { "name": "maj7#11", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11, 6 ] },
+        { "name": "maj9", "memberOf": "Major", "aSteps": [ 0, 4, 7, 2, 11 ] },
+        { "name": "maj9#11", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11, 2, 6 ] },
+        { "name": "maj11", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11, 2, 5 ] },
+        { "name": "maj13", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11, 2, 6 ] },
+        { "name": "maj13#11", "memberOf": "Major", "aSteps": [ 0, 4, 7, 11, 2, 6, 9 ] },
+
+        { "name": "m", "memberOf": "Minor", "aSteps": [ 0, 3, 7 ] },
+        { "name": "m6", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 9 ] },
+        { "name": "m6add9", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 9, 2 ] },
+        { "name": "m7", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 10 ] },
+        { "name": "m7b5", "memberOf": "Minor", "aSteps": [ 0, 3, 6, 10 ] },
+        { "name": "m7#5", "memberOf": "Minor", "aSteps": [ 0, 3, 8, 10 ] }, 
+        { "name": "m7b9", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 10, 1] },
+        { "name": "mmaj7", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 11 ] },
+        { "name": "m9", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 10, 2 ] },
+        { "name": "madd9", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 2 ] },
+        { "name": "mmaj9", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 11, 2 ] },
+        { "name": "m11", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 10, 2, 5 ] },
+        { "name": "m13", "memberOf": "Minor", "aSteps": [ 0, 3, 7, 10, 5, 9 ] },
+
+        { "name": "7", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10 ] },
+        { "name": "7sus4", "memberOf": "Dominant", "aSteps": [ 0, 5, 7, 10 ] },
+        { "name": "7sus4", "memberOf": "Dominant", "aSteps": [ 0, 5, 7, 10 ] },
+        { "name": "7b5", "memberOf": "Dominant", "aSteps": [ 0, 4, 6, 10 ] },
+        { "name": "7b5b9", "memberOf": "Dominant", "aSteps": [ 0, 4, 6, 10, 1 ] },
+        { "name": "7b5#9", "memberOf": "Dominant", "aSteps": [ 0, 4, 6, 10, 3 ] },
+        { "name": "7#5b9", "memberOf": "Dominant", "aSteps": [ 0, 4, 8, 10, 1 ] },
+        { "name": "7#5#9", "memberOf": "Dominant", "aSteps": [ 0, 4, 8, 10, 3 ] },
+        { "name": "7#5", "memberOf": "Dominant", "aSteps": [ 0, 4, 8, 10 ] },
+        { "name": "7b9", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 1 ] },
+        { "name": "7#9", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 3 ] },
+        { "name": "9", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 2 ] },
+        { "name": "9sus4", "memberOf": "Dominant", "aSteps": [ 0, 5, 7, 10, 2 ] },
+        { "name": "9b5", "memberOf": "Dominant", "aSteps": [ 0, 4, 6, 10, 2 ] },
+        { "name": "9#5", "memberOf": "Dominant", "aSteps": [ 0, 4, 8, 10, 2 ] },
+        { "name": "11", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 5 ] },
+        { "name": "11b9", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 1 ] },
+        { "name": "13", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 9 ] },
+        { "name": "13b5", "memberOf": "Dominant", "aSteps": [ 0, 4, 6, 10, 9 ] },
+        { "name": "13b9", "memberOf": "Dominant", "aSteps": [ 0, 4, 7, 10, 1, 9 ] },
+
+        { "name": "5", "memberOf": "No 3rd", "aSteps": [ 0, 7 ] },
+        { "name": "sus2", "memberOf": "No 3rd", "aSteps": [ 0, 2, 7 ] },
+        { "name": "sus4", "memberOf": "No 3rd", "aSteps": [ 0, 5, 7 ] },
+        { "name": "sus2sus4", "memberOf": "No 3rd", "aSteps": [ 0, 2, 5, 7 ] },
+
+        { "name": "dim", "memberOf": "Dim / Aug", "aSteps": [ 0, 3, 6 ] },
+        { "name": "dim7", "memberOf": "Dim / Aug", "aSteps": [ 0, 3, 6, 9 ] },
+        { "name": "aug", "memberOf": "Dim / Aug", "aSteps": [ 0, 4, 8 ] },
+        { "name": "aug7", "memberOf": "Dim / Aug", "aSteps": [ 0, 4, 8, 10 ] }
+    );
+}
 
 //#endregion
 
@@ -820,7 +1208,9 @@ function note()
         'r': 8, //  radius
         'c': 'black', //  color
         'n': '', //  name
-        'w': 2 //  strokeWidth
+        'w': 2, //  strokeWidth
+        's': '',    //  string
+        'f': '' // fret
     };
 }
 
@@ -833,7 +1223,7 @@ function createNotes()
     var z = 0;  //  using this to keep a pointer to the aNotes arr and send it to drawNoteMarker so we can add an ID
     for (var i = 0; i < numStrings; i++)
     {
-        var y = $$('s' + i).y1.baseVal.value;
+        var y = $$('s' + i).getAttribute('y1'); //  .baseVal.value;
         var prevX = 10; // this is the x coord of the 'previous' fret, initialized to the end of the nut
         var n = locateName(i); //  this is the pointer to name of note on the open string from the aTuning arr
         // create the open string (or zero fret) note:
@@ -842,17 +1232,22 @@ function createNotes()
         o.y = y;
         o.r = 4;
         o.n = aNames[n];
+        o.s = i + 1;
+        o.f = 0;
         aNotes.push(o);
         drawNoteMarker(o)
         n = incNames(n);
         // now create the notes for each fret on this string
         for (var j = 0; j < numFrets; j++)
         {
-            var x = $$('f' + j).x1.baseVal.value;
+            var x = $$('f' + j).getAttribute('x1'); //.baseVal.value;
             var o = new note();
-            o.x = ((x - prevX) / 2) + prevX;
+            var n
+            o.x = ((x - prevX) / 2) + Number(prevX);
             o.y = y;
             o.n = aNames[n];
+            o.s = i + 1;
+            o.f = j + 1;
             aNotes.push(o);
             drawNoteMarker(o);
             prevX = x; // reset to current x's value for next iteration
@@ -951,13 +1346,12 @@ function getTonality()
     } else if ($$('types').value === 'chord')
     {
         getChord(); //  populate aSteps
+        aChord = [];    //  creating new chord array to hold name, degree and step
     }
     var aAll = aNames; //  the note names
-    
-    
+        
     root = $$('roots').value; // this is resetting the global var "root" to a new value
     
-
     //  set the aAll array to begin with root:
     do
     {
@@ -974,13 +1368,13 @@ function getTonality()
     {
         aScale.push(aAll[aSteps[i]]);
         var className = aColors[aSteps[i]],
-            bSmall = false;
+        bSmall = false;
         /*
                         aSteps(root,2nd,3rd,4th,5th,6th,7th)
                                     0     1    2    3   4     5   6
         */
         //		var aDegrees = new Array('Root','b2nd','2nd','b3rd','3rd','4th','b5th','5th','b6th','6th','b7th','7th');
-        //				        					     0     1          2     3      4     5      6       7      8      9      10     11
+        //				                    0     1          2     3      4     5      6       7      8      9      10     11
         if ($$('types').value === 'scale')
         {
             //	if the scale has 7 degrees, try to determine a Pentatonic version
@@ -1032,9 +1426,17 @@ function getTonality()
         {
             bPentatonic = true;
         }
+
         html += '<tr valign="middle"><td>' + aAll[aSteps[i]] + '</td><td width="38px" height="25">' + draw(aColors[aSteps[i]], bSmall) + '</td><td>' + aDegrees[aSteps[i]] + '</td></tr>';
-        //  now that we know how all the notes for this degree should look, go ahead and draw all of them:
-        drawTonality(aAll[aSteps[i]], className, bSmall);
+        if ($$('types').value == 'chord')
+        {
+            aChord.push({ 'step': aSteps[i], 'name': aAll[aSteps[i]], 'degree': aDegrees[aSteps[i]] });
+        }
+        if (!$$('cbGrips').checked)
+        {
+            //  now that we know how all the notes for this degree should look, go ahead and draw all of them:
+            drawTonality(aAll[aSteps[i]], className, bSmall);
+        }
     }
     //  finish the description and the degrees table and write them to the dom:
     if ($$('types').value === 'scale')
@@ -1082,6 +1484,10 @@ function getTonality()
         }
         s += '</svg>';
         return s;
+    }
+    if($$('cbGrips').checked)
+    {
+        drawChordGrip();
     }
 }
 
@@ -1299,4 +1705,22 @@ function menuNav()
     }
     a[n].style.display = 'inline';
 }
+
+function showHide(b, o)
+{
+    if (b)
+    {
+        if (o.tagName == 'SPAN')
+        {
+            o.style.display = 'inline-block';
+        } else
+        {
+            o.style.display = 'block';
+        }
+    } else
+    {
+        o.style.display = 'none';
+    }
+}
+
 //#endregion
