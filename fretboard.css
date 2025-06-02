@@ -1,6 +1,6 @@
 ﻿body {
   font-family: Verdana, Arial, Helvetica, sans-serif;
-  font-size: 1vw;
+  font-size: 1ev;
   background-color: black;
   color: white;
 }
@@ -79,14 +79,13 @@ button {
 .menu ul {
   display: inline;
   text-decoration: none;
-  text-align: left;
+  /* text-align: left; */
   overflow: hidden;
+  color: red;
 }
 
 .menu ul li {
   display: inline;
-  /*float: left;*/
-  padding: 5px;
 }
 
 .menu ul li a {
@@ -114,10 +113,10 @@ button {
   cursor: default;
 }
 
-.menu ul li {
-  text-align: left;
-}
-
 .menuTarget {
   display: none;
+}
+
+p {
+  font-size: 8px;
 }
